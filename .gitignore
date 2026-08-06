@@ -1,1 +1,32 @@
+# Local configuration
+.env
 /importer/src/main/resources/application.properties
+/api/src/main/resources/application.properties
+
+# macOS
+.DS_Store
+
+# IntelliJ / IDE
+.idea/
+*.iml
+
+# Java / Maven build output
+target/
+*/target/
+*.class
+
+# PostgreSQL runtime data
+database/data/
+
+# User Instagram exports and generated storage
+storage/imports/*
+!storage/imports/.gitkeep
+
+storage/media/*
+!storage/media/.gitkeep
+
+storage/temp/*
+!storage/temp/.gitkeep
+
+# Logs
+*.log

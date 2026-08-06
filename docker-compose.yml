@@ -1,0 +1,13 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: wrldreset-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: wrldreset
+      POSTGRES_USER: wrldreset
+      POSTGRES_PASSWORD: wrldreset
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./database/data:/var/lib/postgresql/data
