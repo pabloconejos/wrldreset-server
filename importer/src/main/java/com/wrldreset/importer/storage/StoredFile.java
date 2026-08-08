@@ -1,4 +1,14 @@
 package com.wrldreset.importer.storage;
 
-public class StoredFile {
+import com.wrldreset.importer.entity.MediaType;
+
+public record StoredFile(
+        String storagePath,
+        String fileName,
+        String extension,
+        String mimeType,
+        MediaType mediaType,
+        long sizeBytes,
+        String sha256
+) {
 }

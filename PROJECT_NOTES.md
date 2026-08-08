@@ -308,3 +308,108 @@ Regla:
 - el runner solo dispara el workflow
 - el workflow coordina pasos
 - finders/extractors/importers hacen tareas concretas
+
+## Decision: importar contenido visual copiando media desde el principio
+
+Para stories/posts/reels no se guardara temporalmente `storagePath = originalUri`.
+
+Decision:
+
+- al importar un contenido visual, el importer debe resolver el archivo en `workingDirectory`
+- copiarlo a `storage/media` mediante un servicio de storage
+- guardar en PostgreSQL el `originalUri` de Instagram y el `storagePath` final de wrldReset
+
+Motivo:
+
+- la base de datos nace apuntando a archivos definitivos
+- evita una fase posterior de reinterpretacion/migracion de rutas
+- se parece mas al producto real que consumira la API SwiftUI
+
+Ejemplo:
+
+```text
+originalUri = media/stories/202308/abc.jpg
+storagePath = profiles/{profileId}/stories/2023/08/abc.jpg
+```
+
+## LocalStorageService probado con media real
+
+Se probo `LocalStorageService.storeMedia` copiando una story real desde la carpeta temporal descomprimida a `storage/media`.
+
+Resultado:
+
+- copia correctamente el archivo
+- devuelve `storagePath`, `fileName`, `mimeType`, `mediaType`, `sizeBytes`, `sha256`
+
+Pendiente:
+
+- la prueba paso `createdAt = null`, por lo que uso ano/mes actual
+- al importar stories reales debe usarse `creation_timestamp` de Instagram para construir la ruta por fecha real
+- reemplazar prueba hardcodeada por `InstagramStoriesImporter`
+
+## Error varchar(255) al importar stories
+
+Al importar stories se copian archivos correctamente, pero fallo un insert en `instagram_contents` con:
+
+```text
+ERROR: value too long for type character varying(255)
+```
+
+Contexto:
+
+- el fallo ocurre insertando `instagram_contents`
+- campos sospechosos: especialmente `title`, porque puede venir largo desde Instagram
+- `originalUri` y `contentSignature` tambien deben tener longitud explicita para evitar limites por defecto
+
+Decision:
+
+- usar `TEXT` para textos libres como `title`
+- usar longitud amplia o `TEXT` para rutas/signatures segun convenga
+- aplicar migracion/alter table si la tabla ya existe con varchar(255)
+
+## Stories importadas correctamente
+
+Se ejecuto el importer limpio tras ajustar longitudes de columnas.
+
+Resultado probado:
+
+- `InstagramStoriesImporter` importo 596 stories
+- se crearon `instagram_contents` tipo STORY
+- se crearon `media_items` asociados
+- se copiaron archivos a `storage/media` mediante `LocalStorageService`
+- `ImportJob` termino como `COMPLETED`
+
+Este es el primer flujo visual end-to-end:
+
+```text
+stories.json -> InstagramContent -> copiar media -> MediaItem -> PostgreSQL + storage/media
+```
+
+## ImportResult y reimport idempotente de stories
+
+Se creo `ImportResult(createdCount, updatedCount, skippedCount)` y `InstagramStoriesImporter` ya devuelve conteos diferenciados.
+
+Resultado probado al reimportar sin borrar DB:
+
+```text
+Instagram stories imported:
+created: 0
+updated: 596
+skipped: 0
+```
+
+El `ImportJob` se actualiza con esos contadores antes de marcarse `COMPLETED`.
+
+Estado al cerrar la sesion:
+
+- importer encuentra ZIPs
+- descomprime a temp
+- localiza JSONs
+- importa perfil
+- importa/reimporta 596 stories
+- copia media a storage/media
+- registra ImportJob con contadores
+
+Siguiente paso natural:
+
+- importar posts/carruseles o mejorar limpieza de temp/logging antes de avanzar

@@ -1,4 +1,8 @@
 package com.wrldreset.importer.entity;
 
-public class MediaType {
+public enum MediaType {
+    IMAGE,
+    VIDEO,
+    SUBTITLE,
+    UNKNOWN
 }

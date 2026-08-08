@@ -1,4 +1,10 @@
 package com.wrldreset.importer.entity;
 
-public class InstagramContentType {
+public enum InstagramContentType {
+    POST,
+    ARCHIVED_POST,
+    REEL,
+    STORY,
+    IGTV,
+    PROFILE_PHOTO
 }
