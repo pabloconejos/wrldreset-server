@@ -1,4 +1,7 @@
-package com.wrldreset.importer.importer.entity;
+package com.wrldreset.importer.entity;
 
 public enum ImportJobStatus {
+    RUNNING,
+    COMPLETED,
+    FAILED
 }
