@@ -413,3 +413,48 @@ Estado al cerrar la sesion:
 Siguiente paso natural:
 
 - importar posts/carruseles o mejorar limpieza de temp/logging antes de avanzar
+
+## Posts/carruseles importados correctamente
+
+Se implemento `InstagramPostsImporter` para leer `posts_1.json` como lista directa.
+
+Resultado probado:
+
+```text
+Instagram posts imported:
+created: 4226
+updated: 0
+skipped: 0
+```
+
+Notas:
+
+- `InstagramContentType.POST` representa cada post/carrusel
+- cada media dentro del post se guarda como `MediaItem` con `position`
+- se copian archivos a `storage/media/profiles/{profileId}/post/...`
+- el `ImportJob` suma resultados con `ImportResult.plus(...)`
+
+Pendientes:
+
+- reimportar para confirmar `updated: 4226` y no duplicacion
+- revisar firma de posts: ahora `POST:` + primer media uri
+- luego importar reels, IGTV y archived posts
+
+## Reimport idempotente de posts confirmado
+
+Se reejecuto el importer sin borrar DB ni media.
+
+Resultado:
+
+```text
+Instagram posts imported:
+created: 0
+updated: 4226
+skipped: 0
+```
+
+Conclusion:
+
+- `contentSignature = POST:` + primer media uri evita duplicados para posts/carruseles en la exportacion actual
+- `MediaItem` se actualiza por `(content, position)`
+- el flujo puede reejecutarse sin duplicar posts

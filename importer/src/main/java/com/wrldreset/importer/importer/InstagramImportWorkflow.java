@@ -21,6 +21,7 @@ public class InstagramImportWorkflow {
     private final InstagramProfileImporter instagramProfileImporter;
     private final ImportJobService importJobService;
     private final InstagramStoriesImporter instagramStoriesImporter;
+    private final InstagramPostsImporter instagramPostsImporter;
 
     public InstagramImportWorkflow(
             WrldresetStorageProperties storageProperties,
@@ -29,7 +30,8 @@ public class InstagramImportWorkflow {
             InstagramExportFileFinder instagramExportFileFinder,
             InstagramProfileImporter instagramProfileImporter,
             ImportJobService importJobService,
-            InstagramStoriesImporter instagramStoriesImporter
+            InstagramStoriesImporter instagramStoriesImporter,
+            InstagramPostsImporter instagramPostsImporter
     ) {
         this.storageProperties = storageProperties;
         this.instagramZipFinder = instagramZipFinder;
@@ -38,6 +40,7 @@ public class InstagramImportWorkflow {
         this.instagramProfileImporter = instagramProfileImporter;
         this.importJobService = importJobService;
         this.instagramStoriesImporter = instagramStoriesImporter;
+        this.instagramPostsImporter = instagramPostsImporter;
     }
 
     public void importFromConfiguredImportsFolder() throws Exception {
@@ -88,9 +91,18 @@ public class InstagramImportWorkflow {
             System.out.println("updated: " + storiesResult.updatedCount());
             System.out.println("skipped: " + storiesResult.skippedCount());
 
-            importJob.setCreatedCount(storiesResult.createdCount());
-            importJob.setUpdatedCount(storiesResult.updatedCount());
-            importJob.setSkippedCount(storiesResult.skippedCount());
+            ImportResult postsResult = instagramPostsImporter.importPosts(profile, exportFiles);
+
+            System.out.println("Instagram posts imported:");
+            System.out.println("created: " + postsResult.createdCount());
+            System.out.println("updated: " + postsResult.updatedCount());
+            System.out.println("skipped: " + postsResult.skippedCount());
+
+            ImportResult totalResult = storiesResult.plus(postsResult);
+
+            importJob.setCreatedCount(totalResult.createdCount());
+            importJob.setUpdatedCount(totalResult.updatedCount());
+            importJob.setSkippedCount(totalResult.skippedCount());
             
             importJobService.complete(importJob);
 
