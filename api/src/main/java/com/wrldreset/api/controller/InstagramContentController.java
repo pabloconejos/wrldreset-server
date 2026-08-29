@@ -7,8 +7,10 @@ import com.wrldreset.api.repository.InstagramProfileRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -26,13 +28,14 @@ public class InstagramContentController {
     }
 
     @GetMapping("/api/profiles/{profileId}/contents")
-    public List<InstagramContentResponse> findByProfile(@PathVariable UUID profileId) {
+    public Page<InstagramContentResponse> findByProfile(
+            @PathVariable UUID profileId,
+            @PageableDefault(size = 30) Pageable pageable
+    ) {
         InstagramProfile profile = instagramProfileRepository.findById(profileId)
                 .orElseThrow();
 
-        return instagramContentRepository.findByProfileOrderByCreatedAtInstagramDesc(profile)
-                .stream()
-                .map(InstagramContentResponse::fromEntity)
-                .toList();
+        return instagramContentRepository.findByProfileOrderByCreatedAtInstagramDesc(profile, pageable)
+                .map(InstagramContentResponse::fromEntity);
     }
 }
