@@ -499,3 +499,110 @@ Conclusion:
 - `contentSignature = REEL:` + primer media uri evita duplicados en la exportacion actual.
 - `MediaItem` se actualiza por `(content, position)`.
 - El flujo de reels puede reejecutarse sin duplicar datos.
+
+## IGTV importado correctamente
+
+Se implemento `InstagramIgtvImporter` leyendo `igtv_videos.json` mediante wrapper `InstagramIgtvVideosDto`, porque el JSON real empieza como objeto y contiene la lista en `ig_igtv_media`.
+
+Resultado probado:
+
+```text
+Instagram IGTV videos imported:
+created: 184
+updated: 0
+skipped: 0
+```
+
+Notas:
+
+- `InstagramContentType.IGTV` representa cada video IGTV.
+- La firma actual es `IGTV:` + uri del primer media.
+- Los archivos se copian a `storage/media/profiles/{profileId}/igtv/...`.
+- Se reutiliza `InstagramPostMediaDto` porque el media basico de IGTV tiene `uri`, `creation_timestamp` y `title`.
+- Queda pendiente confirmar reimport idempotente de IGTV: esperado `created: 0`, `updated: 184`.
+
+## Archived posts importados e idempotentes
+
+Se implemento `InstagramArchivedPostsImporter` leyendo `archived_posts.json` mediante wrapper `InstagramArchivedPostsDto`, porque el JSON real empieza como objeto y contiene la lista en `ig_archived_post_media`.
+
+Resultado confirmado tras reimport:
+
+```text
+Instagram archived posts imported:
+created: 0
+updated: 49
+skipped: 0
+```
+
+Notas:
+
+- `InstagramContentType.ARCHIVED_POST` representa cada post archivado.
+- La firma actual es `ARCHIVED_POST:` + uri del primer media.
+- Los archivos se copian a `storage/media/profiles/{profileId}/archived-post/...`.
+- El contador cuenta contenidos archivados, no media items individuales; un carrusel archivado puede generar varios `MediaItem`.
+
+## Verificacion DB vs storage tras importers visuales
+
+Se comprobaron conteos despues de importar stories, posts, reels, IGTV y archived posts.
+
+PostgreSQL `instagram_contents` por tipo:
+
+```text
+ARCHIVED_POST: 49
+IGTV: 184
+POST: 4226
+REEL: 243
+STORY: 596
+TOTAL: 5298
+```
+
+PostgreSQL `media_items` por tipo de archivo:
+
+```text
+IMAGE: 6754
+VIDEO: 1089
+TOTAL: 7843
+```
+
+PostgreSQL `media_items` por tipo de contenido:
+
+```text
+ARCHIVED_POST: 52
+IGTV: 184
+POST: 6768
+REEL: 243
+STORY: 596
+TOTAL: 7843
+```
+
+Storage contenia 7851 archivos, pero 8 eran `.DS_Store` generados por Finder. Comparando `media_items.storage_path` contra ficheros reales:
+
+```text
+missing storage files: 0
+extra storage files: 8 (.DS_Store)
+```
+
+Conclusion:
+
+- Todos los `MediaItem` de la base tienen archivo fisico en `storage/media`.
+- La diferencia de conteo se debe solo a `.DS_Store`.
+- Conviene evitar/borrar `.DS_Store` en storage y mantenerlo ignorado por git.
+
+## Limpieza automatica de temp
+
+Se implemento `TemporaryDirectoryCleaner` y se conecto en `InstagramImportWorkflow` tras completar correctamente el import.
+
+Resultado probado:
+
+```text
+Temporary import directory deleted:
+../storage/temp/instagram-import-eb176ece-8ccf-462e-8de8-8660e81e59f6
+Import job completed:
+id: 4b1540b4-5552-4a7e-bee2-b6fb3e987fc8
+```
+
+Decision:
+
+- Si el import termina correctamente, se borra la carpeta temporal de esa ejecucion.
+- Si el import falla, el `catch` marca el job como FAILED y no se borra temp, para poder inspeccionar el problema.
+- Esto evita llenar disco en un mini servidor domestico.

@@ -4,6 +4,7 @@ import com.wrldreset.importer.config.WrldresetStorageProperties;
 import com.wrldreset.importer.entity.ImportJob;
 import com.wrldreset.importer.entity.InstagramProfile;
 import org.springframework.stereotype.Component;
+import com.wrldreset.importer.storage.TemporaryDirectoryCleaner;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -20,6 +21,9 @@ public class InstagramImportWorkflow {
     private final InstagramStoriesImporter instagramStoriesImporter;
     private final InstagramPostsImporter instagramPostsImporter;
     private final InstagramReelsImporter instagramReelsImporter;
+    private final InstagramIgtvImporter instagramIgtvImporter;
+    private final InstagramArchivedPostsImporter instagramArchivedPostsImporter;
+    private final TemporaryDirectoryCleaner temporaryDirectoryCleaner;
 
     public InstagramImportWorkflow(
             WrldresetStorageProperties storageProperties,
@@ -30,7 +34,10 @@ public class InstagramImportWorkflow {
             ImportJobService importJobService,
             InstagramStoriesImporter instagramStoriesImporter,
             InstagramPostsImporter instagramPostsImporter,
-            InstagramReelsImporter instagramReelsImporter
+            InstagramReelsImporter instagramReelsImporter,
+            InstagramIgtvImporter instagramIgtvImporter,
+            InstagramArchivedPostsImporter instagramArchivedPostsImporter,
+            TemporaryDirectoryCleaner temporaryDirectoryCleaner
     ) {
         this.storageProperties = storageProperties;
         this.instagramZipFinder = instagramZipFinder;
@@ -41,6 +48,9 @@ public class InstagramImportWorkflow {
         this.instagramStoriesImporter = instagramStoriesImporter;
         this.instagramPostsImporter = instagramPostsImporter;
         this.instagramReelsImporter = instagramReelsImporter;
+        this.instagramIgtvImporter = instagramIgtvImporter;
+        this.instagramArchivedPostsImporter = instagramArchivedPostsImporter;
+        this.temporaryDirectoryCleaner = temporaryDirectoryCleaner;
     }
 
     public void importFromConfiguredImportsFolder() throws Exception {
@@ -105,15 +115,36 @@ public class InstagramImportWorkflow {
             System.out.println("updated: " + reelsResult.updatedCount());
             System.out.println("skipped: " + reelsResult.skippedCount());
 
+            ImportResult igtvResult = instagramIgtvImporter.importIgtv(profile, exportFiles);
+
+            System.out.println("Instagram IGTV videos imported:");
+            System.out.println("created: " + igtvResult.createdCount());
+            System.out.println("updated: " + igtvResult.updatedCount());
+            System.out.println("skipped: " + igtvResult.skippedCount());
+
+            ImportResult archivedPostsResult = instagramArchivedPostsImporter.importArchivedPosts(profile, exportFiles);
+
+            System.out.println("Instagram archived posts imported:");
+            System.out.println("created: " + archivedPostsResult.createdCount());
+            System.out.println("updated: " + archivedPostsResult.updatedCount());
+            System.out.println("skipped: " + archivedPostsResult.skippedCount());
+
             ImportResult totalResult = storiesResult
                     .plus(postsResult)
-                    .plus(reelsResult);
+                    .plus(reelsResult)
+                    .plus(igtvResult)
+                    .plus(archivedPostsResult);
 
             importJob.setCreatedCount(totalResult.createdCount());
             importJob.setUpdatedCount(totalResult.updatedCount());
             importJob.setSkippedCount(totalResult.skippedCount());
             
             importJobService.complete(importJob);
+
+            temporaryDirectoryCleaner.deleteDirectory(workingDirectory);
+
+            System.out.println("Temporary import directory deleted:");
+            System.out.println(workingDirectory);
 
             System.out.println("Import job completed:");
             System.out.println("id: " + importJob.getId());

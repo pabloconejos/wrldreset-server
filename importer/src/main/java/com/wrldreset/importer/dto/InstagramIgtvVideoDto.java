@@ -1,4 +1,11 @@
 package com.wrldreset.importer.dto;
 
-public class InstagramIgtvVideoDto {
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import java.util.List;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record InstagramIgtvVideoDto(
+        List<InstagramPostMediaDto> media
+) {
 }
