@@ -1,0 +1,13 @@
+spring.application.name=wrldreset-importer
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/wrldreset
+spring.datasource.username=wrldreset
+spring.datasource.password=change-me
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+spring.jpa.open-in-view=false
+
+wrldreset.storage.imports-path=../storage/imports
+wrldreset.storage.media-path=../storage/media
+wrldreset.storage.temp-path=../storage/temp

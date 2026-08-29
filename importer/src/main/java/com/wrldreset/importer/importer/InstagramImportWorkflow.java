@@ -3,8 +3,8 @@ package com.wrldreset.importer.importer;
 import com.wrldreset.importer.config.WrldresetStorageProperties;
 import com.wrldreset.importer.entity.ImportJob;
 import com.wrldreset.importer.entity.InstagramProfile;
-import org.springframework.stereotype.Component;
 import com.wrldreset.importer.storage.TemporaryDirectoryCleaner;
+import org.springframework.stereotype.Component;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -141,10 +141,10 @@ public class InstagramImportWorkflow {
             
             importJobService.complete(importJob);
 
-            temporaryDirectoryCleaner.deleteDirectory(workingDirectory);
+            // temporaryDirectoryCleaner.deleteDirectory(workingDirectory);
 
-            System.out.println("Temporary import directory deleted:");
-            System.out.println(workingDirectory);
+            // System.out.println("Temporary import directory deleted:");
+            // System.out.println(workingDirectory);
 
             System.out.println("Import job completed:");
             System.out.println("id: " + importJob.getId());

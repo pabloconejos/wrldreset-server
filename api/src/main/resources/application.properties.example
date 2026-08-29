@@ -1,0 +1,11 @@
+spring.application.name=wrldreset-api
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/wrldreset
+spring.datasource.username=wrldreset
+spring.datasource.password=change-me
+
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=false
+spring.jpa.open-in-view=false
+
+server.port=8080

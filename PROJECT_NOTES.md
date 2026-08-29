@@ -606,3 +606,43 @@ Decision:
 - Si el import termina correctamente, se borra la carpeta temporal de esa ejecucion.
 - Si el import falla, el `catch` marca el job como FAILED y no se borra temp, para poder inspeccionar el problema.
 - Esto evita llenar disco en un mini servidor domestico.
+
+## Comentarios aplazados
+
+Se reviso `your_instagram_activity/comments/post_comments_1.json`.
+
+Datos reales:
+
+```text
+post_comments_1.json: 562 comentarios
+hype.json: 3 comentarios de stories
+liked_comments.json: 283 likes a comentarios
+```
+
+Decision actual:
+
+- No importar comentarios por ahora.
+- Motivo: `post_comments_1.json` no trae una referencia fiable al post original; `media_list_data.uri` viene vacio.
+- Para el visor actual no interesa guardar comentarios si no pueden asociarse al contenido correcto.
+- Posible futuro: importarlos como actividad independiente, no como comentarios asociados a posts.
+
+## Siguiente foco: API
+
+Tras tener datos visuales reales importados e idempotentes, se decide empezar la API REST para que SwiftUI pueda consultar perfil, contenidos y media.
+
+## Configuracion local y ejemplos
+
+Decision:
+
+- Los archivos reales `application.properties` de `importer` y `api` no se versionan.
+- `.gitignore` mantiene ignorados:
+  - `/importer/src/main/resources/application.properties`
+  - `/api/src/main/resources/application.properties`
+- Se versionan ejemplos sin credenciales reales:
+  - `importer/src/main/resources/application.properties.example`
+  - `api/src/main/resources/application.properties.example`
+
+Motivo:
+
+- Cada usuario self-hosted tendra su propia base de datos, rutas y credenciales.
+- El repo debe documentar la configuracion necesaria sin subir configuracion local sensible.
