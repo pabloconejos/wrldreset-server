@@ -646,3 +646,62 @@ Motivo:
 
 - Cada usuario self-hosted tendra su propia base de datos, rutas y credenciales.
 - El repo debe documentar la configuracion necesaria sin subir configuracion local sensible.
+
+## API: contenidos por perfil
+
+Se implemento endpoint:
+
+```text
+GET /api/profiles/{profileId}/contents
+```
+
+Devuelve contenidos visuales del perfil ordenados por `createdAtInstagram` descendente, con sus `mediaItems` ordenados por `position`.
+
+Problema encontrado:
+
+```text
+org.hibernate.LazyInitializationException: Cannot lazily initialize collection ... mediaItems ... no session
+```
+
+Causa:
+
+- `InstagramContent.mediaItems` es `LAZY`.
+- `spring.jpa.open-in-view=false` cierra la sesion antes de serializar/convertir la respuesta.
+- El DTO intentaba acceder a `content.getMediaItems()` fuera de sesion.
+
+Solucion elegida:
+
+- Usar `@EntityGraph(attributePaths = "mediaItems")` en `InstagramContentRepository.findByProfileOrderByCreatedAtInstagramDesc(...)`.
+
+Decision:
+
+- Mantener `open-in-view=false`.
+- Cargar relaciones explicitamente por endpoint cuando hacen falta.
+- No devolver entidades JPA directas para contenidos; usar DTOs `InstagramContentResponse` y `MediaItemResponse`.
+
+## API: servir media local
+
+Se implemento `MediaController` para servir archivos desde `storage/media` mediante:
+
+```text
+GET /api/media/{storagePath}
+```
+
+Problema encontrado:
+
+- Con `@GetMapping("/api/media/{*storagePath}")`, Spring entrega `storagePath` con `/` inicial.
+- Si se pasa esa ruta directamente a `Path.resolve(...)`, Java la trata como absoluta y se salta `mediaRoot`.
+- La proteccion contra path traversal devolvia HTTP 400 correctamente.
+
+Solucion:
+
+- Limpiar la `/` inicial antes de resolver la ruta.
+
+Resultado probado:
+
+- Una imagen real de `storage/media` se sirve correctamente en navegador desde `localhost:8080/api/media/...`.
+
+Decision:
+
+- Mantener proteccion `mediaFile.startsWith(mediaRoot)`.
+- Servir media por API desde disco local por ahora, dejando abierta futura migracion a S3 u otro storage.

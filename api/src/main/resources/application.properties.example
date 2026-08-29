@@ -1,6 +1,7 @@
 spring.application.name=wrldreset-api
 
 spring.datasource.url=jdbc:postgresql://localhost:5432/wrldreset
+wrldreset.storage.media-path=../storage/media
 spring.datasource.username=wrldreset
 spring.datasource.password=change-me
 
