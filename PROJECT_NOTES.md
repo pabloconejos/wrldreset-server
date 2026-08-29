@@ -458,3 +458,44 @@ Conclusion:
 - `contentSignature = POST:` + primer media uri evita duplicados para posts/carruseles en la exportacion actual
 - `MediaItem` se actualiza por `(content, position)`
 - el flujo puede reejecutarse sin duplicar posts
+
+## Reels importados correctamente
+
+Se implemento `InstagramReelsImporter` leyendo `reels.json` mediante wrapper `InstagramReelsDto`, porque el JSON real empieza como objeto y contiene la lista en `ig_reels_media`.
+
+Resultado probado:
+
+```text
+Instagram reels imported:
+created: 243
+updated: 0
+skipped: 0
+```
+
+Notas:
+
+- `InstagramContentType.REEL` representa cada reel.
+- La firma actual es `REEL:` + uri del primer media.
+- Los archivos se copian a `storage/media/profiles/{profileId}/reel/...`.
+- Se reutiliza `InstagramPostMediaDto` porque el media basico de reels tiene `uri`, `creation_timestamp` y `title`.
+- Queda pendiente confirmar reimport idempotente de reels: esperado `created: 0`, `updated: 243`.
+- Queda pendiente limpiar `storage/temp` automaticamente al terminar o soportar modo debug tipo `--keep-temp`.
+
+## Reimport idempotente de reels confirmado
+
+Se reejecuto el importer sin borrar la base de datos.
+
+Resultado:
+
+```text
+Instagram reels imported:
+created: 0
+updated: 243
+skipped: 0
+```
+
+Conclusion:
+
+- `contentSignature = REEL:` + primer media uri evita duplicados en la exportacion actual.
+- `MediaItem` se actualiza por `(content, position)`.
+- El flujo de reels puede reejecutarse sin duplicar datos.

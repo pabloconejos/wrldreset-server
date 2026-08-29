@@ -3,10 +3,7 @@ package com.wrldreset.importer.importer;
 import com.wrldreset.importer.config.WrldresetStorageProperties;
 import com.wrldreset.importer.entity.ImportJob;
 import com.wrldreset.importer.entity.InstagramProfile;
-import com.wrldreset.importer.storage.StoredFile;
 import org.springframework.stereotype.Component;
-import com.wrldreset.importer.storage.LocalStorageService;
-import com.wrldreset.importer.storage.StoredFile;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -22,6 +19,7 @@ public class InstagramImportWorkflow {
     private final ImportJobService importJobService;
     private final InstagramStoriesImporter instagramStoriesImporter;
     private final InstagramPostsImporter instagramPostsImporter;
+    private final InstagramReelsImporter instagramReelsImporter;
 
     public InstagramImportWorkflow(
             WrldresetStorageProperties storageProperties,
@@ -31,7 +29,8 @@ public class InstagramImportWorkflow {
             InstagramProfileImporter instagramProfileImporter,
             ImportJobService importJobService,
             InstagramStoriesImporter instagramStoriesImporter,
-            InstagramPostsImporter instagramPostsImporter
+            InstagramPostsImporter instagramPostsImporter,
+            InstagramReelsImporter instagramReelsImporter
     ) {
         this.storageProperties = storageProperties;
         this.instagramZipFinder = instagramZipFinder;
@@ -41,6 +40,7 @@ public class InstagramImportWorkflow {
         this.importJobService = importJobService;
         this.instagramStoriesImporter = instagramStoriesImporter;
         this.instagramPostsImporter = instagramPostsImporter;
+        this.instagramReelsImporter = instagramReelsImporter;
     }
 
     public void importFromConfiguredImportsFolder() throws Exception {
@@ -98,7 +98,16 @@ public class InstagramImportWorkflow {
             System.out.println("updated: " + postsResult.updatedCount());
             System.out.println("skipped: " + postsResult.skippedCount());
 
-            ImportResult totalResult = storiesResult.plus(postsResult);
+            ImportResult reelsResult = instagramReelsImporter.importReels(profile, exportFiles);
+
+            System.out.println("Instagram reels imported:");
+            System.out.println("created: " + reelsResult.createdCount());
+            System.out.println("updated: " + reelsResult.updatedCount());
+            System.out.println("skipped: " + reelsResult.skippedCount());
+
+            ImportResult totalResult = storiesResult
+                    .plus(postsResult)
+                    .plus(reelsResult);
 
             importJob.setCreatedCount(totalResult.createdCount());
             importJob.setUpdatedCount(totalResult.updatedCount());
