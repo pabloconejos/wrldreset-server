@@ -705,3 +705,205 @@ Decision:
 
 - Mantener proteccion `mediaFile.startsWith(mediaRoot)`.
 - Servir media por API desde disco local por ahora, dejando abierta futura migracion a S3 u otro storage.
+
+## API: filtro de contenidos por tipo
+
+Se amplio el endpoint paginado de contenidos para aceptar filtro opcional por tipo:
+
+```text
+GET /api/profiles/{profileId}/contents?type=POST&page=0&size=30
+GET /api/profiles/{profileId}/contents?type=STORY&page=0&size=30
+GET /api/profiles/{profileId}/contents?type=REEL&page=0&size=30
+GET /api/profiles/{profileId}/contents?type=IGTV&page=0&size=30
+GET /api/profiles/{profileId}/contents?type=ARCHIVED_POST&page=0&size=30
+```
+
+Implementacion:
+
+- `InstagramContentRepository.findByProfileOrderByCreatedAtInstagramDesc(...)` para todos.
+- `InstagramContentRepository.findByProfileAndContentTypeOrderByCreatedAtInstagramDesc(...)` para filtro por `InstagramContentType`.
+- Ambos metodos usan `@EntityGraph(attributePaths = "mediaItems")`.
+
+Decision:
+
+- Mantener una sola ruta `/contents` y usar query param opcional `type`.
+- Esto es simple para SwiftUI y mantiene la API predecible.
+
+## API: 404 para recursos inexistentes
+
+Se agrego `ResourceNotFoundException` con `@ResponseStatus(HttpStatus.NOT_FOUND)`.
+
+Se uso en:
+
+- `GET /api/profiles/{id}`
+- `GET /api/profiles/{profileId}/contents`
+
+Resultado probado:
+
+- UUID inexistente devuelve HTTP 404.
+- Perfil real sigue funcionando correctamente.
+
+Nota:
+
+- En navegador aparece `Whitelabel Error Page`, pero el status HTTP es correcto.
+- Futuro: crear respuesta JSON de error mas limpia para clientes SwiftUI.
+
+## API: errores JSON
+
+Se agrego `ApiErrorResponse` y `GlobalExceptionHandler` con `@RestControllerAdvice`.
+
+Resultado probado:
+
+- `GET /api/profiles/{uuid-inexistente}` devuelve JSON con HTTP 404.
+- `GET /api/profiles/{uuid-inexistente}/contents` devuelve JSON con HTTP 404.
+
+Forma de respuesta:
+
+```json
+{
+  "timestamp": "...",
+  "status": 404,
+  "error": "Not Found",
+  "message": "Instagram profile not found: ...",
+  "path": "/api/profiles/..."
+}
+```
+
+Decision:
+
+- Usar `ResponseEntity<ApiErrorResponse>` para que el status HTTP real coincida con el `status` del JSON.
+- Mantener errores controlados y legibles para SwiftUI.
+
+## API: parametros invalidos como JSON 400
+
+Se amplio `GlobalExceptionHandler` para capturar `MethodArgumentTypeMismatchException`.
+
+Caso probado:
+
+```text
+GET /api/profiles/{profileId}/contents?type=PEPE
+```
+
+Resultado:
+
+```json
+{
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Invalid request parameter: type",
+  "path": "/api/profiles/{profileId}/contents"
+}
+```
+
+Decision:
+
+- Los errores de parametros invalidos deben devolverse como JSON, no como Whitelabel.
+- Futuro: mejorar mensaje para enums indicando valores permitidos, por ejemplo `POST, STORY, REEL, IGTV, ARCHIVED_POST`.
+
+## API: detalle de contenido
+
+Se agrego endpoint:
+
+```text
+GET /api/profiles/{profileId}/contents/{contentId}
+```
+
+Implementacion:
+
+- `InstagramContentRepository.findByIdAndProfile(contentId, profile)` con `@EntityGraph(attributePaths = "mediaItems")`.
+- El controller valida primero que el perfil existe.
+- Si el contenido no existe o no pertenece al perfil, devuelve 404 JSON.
+
+Decision:
+
+- Mantener la jerarquia de URL perfil -> contenido.
+- No buscar contenido solo por id en endpoints anidados, para evitar devolver contenido de otro perfil en el futuro.
+
+## API: resumen de perfil
+
+Se agrego endpoint:
+
+```text
+GET /api/profiles/{profileId}/summary
+```
+
+Devuelve:
+
+- `profileId`
+- `username`
+- `totalContents`
+- `totalMediaItems`
+- `contentsByType`
+
+Resultado probado:
+
+```text
+profileId: 220075af-e359-4cf5-968a-9b6e213cb8e6
+username: wrldreset
+totalContents: 5298
+totalMediaItems: 7843
+POST: 4226
+ARCHIVED_POST: 49
+REEL: 243
+STORY: 596
+IGTV: 184
+```
+
+Implementacion:
+
+- `InstagramContentRepository.countByContentType(profile)` usando JPQL con DTO `ContentTypeCount`.
+- `MediaItemRepository.countByProfile(profile)` contando media items mediante `m.content.profile`.
+- `InstagramProfileSummaryResponse` como DTO de salida.
+
+Uso previsto:
+
+- Pantalla de perfil SwiftUI.
+- Chips/filtros por tipo con contadores.
+- Estadisticas basicas del archivo personal.
+
+## SwiftUI: primera conexion con API
+
+Se agregaron modelos API y `WrldresetAPIClient` con `WrldresetAPIConfiguration`.
+
+Decision:
+
+- `localhost` no queda hardcodeado dentro del cliente HTTP; vive en `WrldresetAPIConfiguration.development`.
+- Esto prepara la app para self-hosting local, servidor domestico o dominio publico configurable en el futuro.
+
+Resultado probado:
+
+- `APIDebugView` llama a `GET /api/profiles`.
+- La app iOS muestra el perfil real importado desde PostgreSQL via API.
+
+Dato visto:
+
+```text
+id: 220075af-e359-4cf5-968a-9b6e213cb8e6
+username: wrldreset
+website: http://pabloconejos.dev
+```
+
+Pendiente:
+
+- Revisar mojibake/encoding del `displayName` procedente de la exportacion Instagram.
+- Cargar contenidos paginados en SwiftUI y pintar imagenes reales usando `mediaUrl`.
+
+## SwiftUI: primera imagen real desde API
+
+Se amplio `APIDebugView` para cargar contenidos paginados desde la API y pintar la primera imagen usando `AsyncImage`.
+
+Flujo validado:
+
+```text
+SwiftUI -> fetchContents -> API /contents -> PostgreSQL -> mediaUrl -> API /media -> storage/media -> AsyncImage
+```
+
+Resultado probado:
+
+- La app iOS muestra una imagen real importada desde la exportacion de Instagram.
+- `mediaUrl` relativo se combina con `WrldresetAPIConfiguration.baseURL` mediante `WrldresetAPIClient.mediaURL(for:)`.
+
+Decision:
+
+- Mantener `mediaUrl` en la respuesta API para que SwiftUI no construya rutas internas.
+- Mantener `storagePath` tambien por transparencia/debug, pero SwiftUI debe usar `mediaUrl`.
