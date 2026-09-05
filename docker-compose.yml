@@ -11,3 +11,38 @@ services:
       - "5432:5432"
     volumes:
       - ./database/data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ./api
+    container_name: wrldreset-api
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/wrldreset
+      SPRING_DATASOURCE_USERNAME: wrldreset
+      SPRING_DATASOURCE_PASSWORD: wrldreset
+      WRLDRESET_STORAGE_MEDIA_PATH: /app/storage/media
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./storage/media:/app/storage/media
+
+  importer:
+    build:
+      context: ./importer
+    container_name: wrldreset-importer
+    depends_on:
+      - postgres
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/wrldreset
+      SPRING_DATASOURCE_USERNAME: wrldreset
+      SPRING_DATASOURCE_PASSWORD: wrldreset
+      WRLDRESET_STORAGE_IMPORTS_PATH: /app/storage/imports
+      WRLDRESET_STORAGE_MEDIA_PATH: /app/storage/media
+      WRLDRESET_STORAGE_TEMP_PATH: /app/storage/temp
+    volumes:
+      - ./storage/imports:/app/storage/imports
+      - ./storage/media:/app/storage/media
+      - ./storage/temp:/app/storage/temp
